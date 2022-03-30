@@ -1,0 +1,25 @@
+with revenue_monthly as 
+(
+    select date_trunc('month',transaction_datetime)::date::text as pay_month, sum(payment_amount) as revenue, count(distinct user_id) as paying_users, sum(payment_amount)/count(distinct user_id)::float as ARPPU
+    from skyeng_db.payments
+    where id_transaction is not null 
+        and status_name='success'
+        and date_part('year', transaction_datetime)=2016
+        and date_part('month', transaction_datetime) in (7,8)
+    group by 1
+    order by 1
+)
+select *
+from revenue_monthly
+union all
+select 'diff'
+    , max(case when pay_month = '2016-08-01' then revenue end)-max(case when pay_month = '2016-07-01' then revenue end) as revenue_diff
+    , max(case when pay_month = '2016-08-01' then paying_users end)-max(case when pay_month = '2016-07-01' then paying_users end) as paying_users_diff
+    , max(case when pay_month = '2016-08-01' then ARPPU end)-max(case when pay_month = '2016-07-01' then ARPPU end) as ARPPU_diff
+from revenue_monthly
+union all 
+select 'diff_explained'
+    , max(case when pay_month = '2016-08-01' then revenue end)-max(case when pay_month = '2016-07-01' then revenue end) as revenue_diff
+    , (max(case when pay_month = '2016-08-01' then paying_users end)-max(case when pay_month = '2016-07-01' then paying_users end)) * max(case when pay_month = '2016-07-01' then ARPPU end) as paying_users_explain
+    , (max(case when pay_month = '2016-08-01' then ARPPU end)-max(case when pay_month = '2016-07-01' then ARPPU end))*max(case when pay_month = '2016-08-01' then paying_users end) as ARPPU_explained
+from revenue_monthly
