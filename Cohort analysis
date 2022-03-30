@@ -1,0 +1,29 @@
+with students_first_month as
+(
+select user_id, date_trunc('month', min(class_start_datetime))::date first_month
+from skyeng_db.classes
+where class_status='success'
+group by 1
+),
+students_month as 
+(
+select distinct(user_id), date_trunc('month', class_start_datetime)::date mon
+from skyeng_db.classes
+where class_status='success'
+order by user_id
+),
+reterned as 
+(
+select f.first_month
+    , date_part('year', m.mon)*12 + date_part('month', m.mon) - 
+     (date_part('year', f.first_month)*12 + date_part('month', f.first_month)) mon_diff
+    , count(m.user_id) users_count
+from students_first_month f 
+    join students_month m on f.user_id=m.user_id
+group by 1,2
+)
+select first_month, mon_diff, (users_count/max(users_count) over(partition by first_month)::float)*100 as retention
+    from reterned
+where first_month<='2017-01-01'
+    and mon_diff<=12
+order by 1,2
